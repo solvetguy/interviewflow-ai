@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Video as VideoIcon, VideoOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,7 @@ interface VideoContainerProps {
   isMuted?: boolean;
   isVideoOff?: boolean;
   avatarUrl?: string;
+  videoStream?: MediaStream | null;
 }
 
 const VideoContainer = ({
@@ -20,8 +21,10 @@ const VideoContainer = ({
   isMuted = false,
   isVideoOff = false,
   avatarUrl,
+  videoStream,
 }: VideoContainerProps) => {
   const [showPulse, setShowPulse] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (isSpeaking) {
@@ -31,6 +34,12 @@ const VideoContainer = ({
       return () => clearTimeout(timer);
     }
   }, [isSpeaking]);
+
+  useEffect(() => {
+    if (videoRef.current && videoStream && !isVideoOff) {
+      videoRef.current.srcObject = videoStream;
+    }
+  }, [videoStream, isVideoOff]);
 
   return (
     <div className="relative w-full h-full">
@@ -53,6 +62,14 @@ const VideoContainer = ({
               </div>
               <VideoOff className="w-6 h-6 text-muted-foreground" />
             </div>
+          ) : videoStream ? (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted={isLocal}
+              className="w-full h-full object-cover"
+            />
           ) : avatarUrl ? (
             <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
           ) : (
