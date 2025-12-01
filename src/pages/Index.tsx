@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import VideoContainer from '@/components/VideoContainer';
 import SpeechWaveform from '@/components/SpeechWaveform';
 import InterviewerCarousel from '@/components/InterviewerCarousel';
@@ -6,15 +6,57 @@ import ChatPanel from '@/components/ChatPanel';
 import FileUpload from '@/components/FileUpload';
 import ControlToolbar from '@/components/ControlToolbar';
 import RecordingIndicator from '@/components/RecordingIndicator';
+import { useMediaDevices } from '@/hooks/useMediaDevices';
+import { useMediaRecorder } from '@/hooks/useMediaRecorder';
+import { useVoiceDetection } from '@/hooks/useVoiceDetection';
 
 const Index = () => {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
   const [interviewerSpeaking, setInterviewerSpeaking] = useState(false);
-  const [candidateSpeaking, setCandidateSpeaking] = useState(false);
-  const [isRecordingVideo, setIsRecordingVideo] = useState(true);
-  const [isRecordingAudio, setIsRecordingAudio] = useState(true);
   const [activeInterviewerId, setActiveInterviewerId] = useState('1');
+
+  // Media devices
+  const {
+    videoStream,
+    audioStream,
+    isVideoEnabled,
+    isAudioEnabled,
+    toggleVideo,
+    toggleAudio,
+    startVideo,
+    startAudio
+  } = useMediaDevices();
+
+  // Voice detection for candidate
+  const isCandidateSpeaking = useVoiceDetection(audioStream);
+
+  // Combined stream for recording (video + audio)
+  const [combinedStream, setCombinedStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (videoStream && audioStream) {
+      const combined = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...audioStream.getAudioTracks()
+      ]);
+      setCombinedStream(combined);
+    } else {
+      setCombinedStream(null);
+    }
+  }, [videoStream, audioStream]);
+
+  // Recording
+  const {
+    isRecording,
+    startRecording,
+    stopRecording,
+    downloadRecording
+  } = useMediaRecorder(combinedStream);
+
+  // Auto-start media on mount
+  useEffect(() => {
+    startVideo();
+    startAudio();
+  }, []);
 
   const interviewers = [
     { id: '1', name: 'Sarah Chen', role: 'AI Senior Engineer' },
@@ -73,12 +115,24 @@ const Index = () => {
     setTimeout(() => setInterviewerSpeaking(false), 3000);
   };
 
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  const handleDownloadRecording = () => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadRecording(`interview-recording-${timestamp}.webm`);
+  };
+
   return (
     <div className="min-h-screen w-full p-6 space-y-6">
       {/* Recording Indicators */}
       <div className="flex justify-end gap-3">
-        <RecordingIndicator isRecording={isRecordingVideo} label="Recording Video" />
-        <RecordingIndicator isRecording={isRecordingAudio} label="Recording Audio" />
+        <RecordingIndicator isRecording={isRecording} label="Recording Interview" />
       </div>
 
       {/* Interviewer Carousel */}
@@ -120,14 +174,15 @@ const Index = () => {
               <div className="aspect-video">
                 <VideoContainer
                   name="Alex Johnson"
-                  isSpeaking={candidateSpeaking}
+                  isSpeaking={isCandidateSpeaking}
                   isLocal
-                  isMuted={isMuted}
-                  isVideoOff={isVideoOff}
+                  isMuted={!isAudioEnabled}
+                  isVideoOff={!isVideoEnabled}
+                  videoStream={videoStream}
                 />
               </div>
               <div className="flex justify-center">
-                <SpeechWaveform isActive={candidateSpeaking} />
+                <SpeechWaveform isActive={isCandidateSpeaking} />
               </div>
             </div>
           </div>
@@ -135,10 +190,13 @@ const Index = () => {
           {/* Control Toolbar */}
           <div className="flex justify-center">
             <ControlToolbar
-              isMuted={isMuted}
-              isVideoOff={isVideoOff}
-              onToggleMic={() => setIsMuted(!isMuted)}
-              onToggleVideo={() => setIsVideoOff(!isVideoOff)}
+              isMuted={!isAudioEnabled}
+              isVideoOff={!isVideoEnabled}
+              isRecording={isRecording}
+              onToggleMic={toggleAudio}
+              onToggleVideo={toggleVideo}
+              onToggleRecording={handleToggleRecording}
+              onDownloadRecording={handleDownloadRecording}
               onEndInterview={() => console.log('End interview')}
               onSwitchInterviewer={() => {
                 const currentIndex = interviewers.findIndex(i => i.id === activeInterviewerId);

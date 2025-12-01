@@ -1,12 +1,15 @@
-import { Mic, MicOff, Video, VideoOff, Phone, Users, Volume2 } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Phone, Users, Volume2, Circle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface ControlToolbarProps {
   isMuted: boolean;
   isVideoOff: boolean;
+  isRecording: boolean;
   onToggleMic: () => void;
   onToggleVideo: () => void;
+  onToggleRecording: () => void;
+  onDownloadRecording: () => void;
   onEndInterview: () => void;
   onSwitchInterviewer: () => void;
   onReplayVoice: () => void;
@@ -15,8 +18,11 @@ interface ControlToolbarProps {
 const ControlToolbar = ({
   isMuted,
   isVideoOff,
+  isRecording,
   onToggleMic,
   onToggleVideo,
+  onToggleRecording,
+  onDownloadRecording,
   onEndInterview,
   onSwitchInterviewer,
   onReplayVoice,
@@ -58,6 +64,29 @@ const ControlToolbar = ({
         className="h-14 w-14 rounded-xl bg-muted hover:bg-muted/80 text-foreground"
       >
         <Volume2 className="w-6 h-6" />
+      </Button>
+
+      {/* Recording Toggle */}
+      <Button
+        onClick={onToggleRecording}
+        size="icon"
+        className={cn(
+          "h-14 w-14 rounded-xl transition-all duration-300",
+          isRecording
+            ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse"
+            : "bg-muted hover:bg-muted/80 text-foreground"
+        )}
+      >
+        <Circle className={cn("w-6 h-6", isRecording && "fill-current")} />
+      </Button>
+
+      {/* Download Recording */}
+      <Button
+        onClick={onDownloadRecording}
+        size="icon"
+        className="h-14 w-14 rounded-xl bg-muted hover:bg-muted/80 text-foreground"
+      >
+        <Download className="w-6 h-6" />
       </Button>
 
       {/* Switch Interviewer */}
